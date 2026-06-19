@@ -49,14 +49,6 @@ const useStore = create((set, get) => ({
     get().pushHistory();
   },
 
-  updateElement: (id, attrs) => {
-    set((state) => ({
-      elements: state.elements.map((el) =>
-        el.id === id ? { ...el, ...attrs } : el
-      ),
-    }));
-  },
-
   updateElementWithHistory: (id, attrs) => {
     set((state) => ({
       elements: state.elements.map((el) =>

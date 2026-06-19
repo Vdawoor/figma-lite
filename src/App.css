@@ -59,6 +59,39 @@ body {
   letter-spacing: -0.5px;
 }
 
+.undo-redo-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.undo-redo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.undo-redo-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.undo-redo-btn:active:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.undo-redo-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .header-controls {
   display: flex;
   align-items: center;

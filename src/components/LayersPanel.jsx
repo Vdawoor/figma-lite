@@ -1,4 +1,4 @@
-import { motion, Reorder } from 'framer-motion';
+import { Reorder } from 'framer-motion';
 import useStore from '../store/useStore';
 
 const typeIcons = {
