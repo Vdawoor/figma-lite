@@ -2,7 +2,6 @@ import { useRef, useEffect, useState } from 'react';
 import { Stage, Layer, Group, Rect, Transformer } from 'react-konva';
 import useStore from '../store/useStore';
 import useStageSize from '../hooks/useStageSize';
-import useArtboardDrawing from '../hooks/useArtboardDrawing';
 import useMarqueeSelection from '../hooks/useMarqueeSelection';
 import useTextEditing from '../hooks/useTextEditing';
 import useCanvasViewport from '../hooks/useCanvasViewport';
@@ -19,7 +18,6 @@ export default function Canvas({ stageRef }) {
   const artboard = useStore((s) => s.artboard);
 
   const { stageSize, containerRef } = useStageSize();
-  const { isDrawingArtboard, drawingRect, startDrawing, updateDrawing, finishDrawing } = useArtboardDrawing();
   const { isSelecting, selectionRect, startSelection, updateSelection, finishSelection } = useMarqueeSelection();
   const { editingText, startEditing, updateText, finishEditing } = useTextEditing(stageRef);
   const {
@@ -42,7 +40,6 @@ export default function Canvas({ stageRef }) {
     transformerRef.current.getLayer().batchDraw();
   }, [selectedIds, elements]);
 
-  // If no artboard exists yet, mouse-down starts drawing one; otherwise starts marquee selection
   const handleStageMouseDown = (e) => {
     // Let panning take over when space is held or middle-click
     if (spaceHeld || e.evt.button === 1) {
@@ -54,35 +51,16 @@ export default function Canvas({ stageRef }) {
     const pos = e.target.getStage().getPointerPosition();
 
     setArtboardSelected(false);
-
-    if (!artboard) {
-      startDrawing(pos);
-      return;
-    }
-
     startSelection(pos, e.evt.shiftKey);
   };
 
-  // Routes mouse-move to artboard drawing or marquee selection depending on active mode
   const handleStageMouseMove = (e) => {
+    if (!isSelecting) return;
     const pos = e.target.getStage().getPointerPosition();
-
-    if (isDrawingArtboard) {
-      updateDrawing(pos);
-      return;
-    }
-
-    if (isSelecting) {
-      updateSelection(pos);
-    }
+    updateSelection(pos);
   };
 
-  // Commits the current interaction — finalizes artboard or resolves marquee to selected elements
   const handleStageMouseUp = () => {
-    if (isDrawingArtboard) {
-      finishDrawing();
-      return;
-    }
     finishSelection();
   };
 
@@ -152,13 +130,8 @@ export default function Canvas({ stageRef }) {
     <div
       className="canvas-container"
       ref={containerRef}
-      style={{ cursor: spaceHeld || isPanning ? 'grab' : !artboard ? 'crosshair' : 'default' }}
+      style={{ cursor: spaceHeld || isPanning ? 'grab' : 'default' }}
     >
-      {!artboard && (
-        <div className="artboard-hint">
-          Draw your canvas — click and drag to create your design area
-        </div>
-      )}
 
       <Stage
         ref={stageRef}
@@ -183,22 +156,6 @@ export default function Canvas({ stageRef }) {
             artboardSelected={artboardSelected}
             setArtboardSelected={setArtboardSelected}
           />
-
-          {/* Artboard draft preview while drawing */}
-          {isDrawingArtboard && drawingRect && (
-            <Rect
-              x={drawingRect.x}
-              y={drawingRect.y}
-              width={drawingRect.width}
-              height={drawingRect.height}
-              fill="#ffffff"
-              stroke="#000000"
-              strokeWidth={2}
-              dash={[6, 4]}
-              opacity={0.8}
-              listening={false}
-            />
-          )}
 
           {/* Clipped group: unselected elements are hidden if outside the artboard boundary */}
           {artboard && (
@@ -270,11 +227,9 @@ export default function Canvas({ stageRef }) {
         />
       )}
 
-      {artboard && (
-        <div className="artboard-size-label">
-          {Math.round(artboard.width)} × {Math.round(artboard.height)} px
-        </div>
-      )}
+      <div className="artboard-size-label">
+        {Math.round(artboard.width)} × {Math.round(artboard.height)} px
+      </div>
 
       {/* Zoom controls */}
       <div className="zoom-controls">

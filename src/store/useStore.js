@@ -4,8 +4,16 @@ import { v4 as uuidv4 } from 'uuid';
 
 const MAX_HISTORY = 50;
 
+// A4 proportions — x adjusts based on viewport width
+const DEFAULT_ARTBOARD = {
+  x: window.innerWidth <= 768 ? 50 : 350,
+  y: 50,
+  width: 458,
+  height: 640,
+};
+
 const useStore = create((set, get) => ({
-  artboard: null,
+  artboard: DEFAULT_ARTBOARD,
   elements: [],
   selectedIds: [],
   history: [[]],

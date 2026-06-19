@@ -13,8 +13,6 @@ export default function Toolbar() {
   const artboard = useStore((s) => s.artboard);
 
   const handleAdd = (type) => {
-    if (!artboard) return;
-
     const ax = artboard.x;
     const ay = artboard.y;
 
@@ -60,12 +58,11 @@ export default function Toolbar() {
         {tools.map((tool) => (
           <motion.button
             key={tool.type}
-            className={`toolbar-btn ${!artboard ? 'disabled' : ''}`}
+            className="toolbar-btn"
             onClick={() => handleAdd(tool.type)}
-            whileHover={artboard ? { scale: 1.05 } : {}}
-            whileTap={artboard ? { scale: 0.95 } : {}}
-            title={artboard ? tool.label : 'Draw a canvas first'}
-            disabled={!artboard}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title={tool.label}
           >
             <span className="toolbar-icon">{tool.icon}</span>
             <span className="toolbar-label">{tool.label}</span>
