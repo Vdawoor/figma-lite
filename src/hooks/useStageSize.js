@@ -5,6 +5,8 @@ export default function useStageSize() {
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
+    if (!containerRef.current) return;
+
     const updateSize = () => {
       if (containerRef.current) {
         setStageSize({
@@ -13,9 +15,13 @@ export default function useStageSize() {
         });
       }
     };
+
     updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
   }, []);
 
   return { stageSize, containerRef };

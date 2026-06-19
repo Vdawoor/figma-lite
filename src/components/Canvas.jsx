@@ -5,6 +5,7 @@ import useStageSize from '../hooks/useStageSize';
 import useArtboardDrawing from '../hooks/useArtboardDrawing';
 import useMarqueeSelection from '../hooks/useMarqueeSelection';
 import useTextEditing from '../hooks/useTextEditing';
+import useCanvasViewport from '../hooks/useCanvasViewport';
 import Artboard from './Artboard';
 import { RectElement, CircleElement, TextElement, ImageElement } from './shapes';
 
@@ -21,6 +22,11 @@ export default function Canvas({ stageRef }) {
   const { isDrawingArtboard, drawingRect, startDrawing, updateDrawing, finishDrawing } = useArtboardDrawing();
   const { isSelecting, selectionRect, startSelection, updateSelection, finishSelection } = useMarqueeSelection();
   const { editingText, startEditing, updateText, finishEditing } = useTextEditing(stageRef);
+  const {
+    scale, position, spaceHeld, isPanning,
+    handleWheel, handleDragStart, handleDragEnd, handleMouseDown,
+    zoomIn, zoomOut, resetZoom,
+  } = useCanvasViewport(stageRef);
 
   const transformerRef = useRef();
   const [artboardSelected, setArtboardSelected] = useState(false);
@@ -38,6 +44,12 @@ export default function Canvas({ stageRef }) {
 
   // If no artboard exists yet, mouse-down starts drawing one; otherwise starts marquee selection
   const handleStageMouseDown = (e) => {
+    // Let panning take over when space is held or middle-click
+    if (spaceHeld || e.evt.button === 1) {
+      handleMouseDown(e);
+      return;
+    }
+
     if (e.target !== e.target.getStage()) return;
     const pos = e.target.getStage().getPointerPosition();
 
@@ -140,7 +152,7 @@ export default function Canvas({ stageRef }) {
     <div
       className="canvas-container"
       ref={containerRef}
-      style={{ cursor: !artboard ? 'crosshair' : 'default' }}
+      style={{ cursor: spaceHeld || isPanning ? 'grab' : !artboard ? 'crosshair' : 'default' }}
     >
       {!artboard && (
         <div className="artboard-hint">
@@ -152,6 +164,14 @@ export default function Canvas({ stageRef }) {
         ref={stageRef}
         width={stageSize.width}
         height={stageSize.height}
+        scaleX={scale}
+        scaleY={scale}
+        x={position.x}
+        y={position.y}
+        draggable={spaceHeld || isPanning}
+        onWheel={handleWheel}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         onMouseDown={handleStageMouseDown}
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
@@ -255,6 +275,24 @@ export default function Canvas({ stageRef }) {
           {Math.round(artboard.width)} × {Math.round(artboard.height)} px
         </div>
       )}
+
+      {/* Zoom controls */}
+      <div className="zoom-controls">
+        <button className="zoom-btn" onClick={zoomOut} title="Zoom out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <button className="zoom-btn zoom-level" onClick={resetZoom} title="Reset zoom">
+          {Math.round(scale * 100)}%
+        </button>
+        <button className="zoom-btn" onClick={zoomIn} title="Zoom in">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

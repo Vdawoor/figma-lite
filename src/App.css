@@ -52,11 +52,42 @@ body {
   z-index: 100;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .app-logo {
   font-size: 20px;
   font-weight: 700;
   color: var(--accent);
   letter-spacing: -0.5px;
+}
+
+.panel-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.panel-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .undo-redo-controls {
@@ -92,7 +123,8 @@ body {
   cursor: default;
 }
 
-.header-controls {
+.header-controls,
+.header-right {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -106,22 +138,47 @@ body {
 
 .left-panel {
   width: 240px;
+  flex-shrink: 0;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  transition: width 0.25s ease, opacity 0.2s ease;
+}
+
+.left-panel.collapsed {
+  width: 0;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  border-right: none;
+  opacity: 0;
+  padding: 0;
 }
 
 .right-panel {
   width: 280px;
+  flex-shrink: 0;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border);
   overflow-y: auto;
+  transition: width 0.25s ease, opacity 0.2s ease;
+}
+
+.right-panel.collapsed {
+  width: 0;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  border-left: none;
+  opacity: 0;
+  padding: 0;
 }
 
 .canvas-area {
   flex: 1;
+  min-width: 0;
   position: relative;
   overflow: hidden;
   background: #f9f9f9;
@@ -480,6 +537,50 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/* Zoom Controls */
+.zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 6px;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.zoom-btn:hover {
+  background: var(--bg-hover);
+}
+
+.zoom-btn.zoom-level {
+  width: auto;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 /* Disabled toolbar buttons */
 .toolbar-btn.disabled,
 .toolbar-btn:disabled {
@@ -492,4 +593,162 @@ body {
   background: var(--bg-tertiary);
   transform: none;
   box-shadow: none;
+}
+
+/* Mobile bottom bar — hidden on desktop */
+.mobile-bottom-bar {
+  display: none;
+}
+
+.mobile-sheet-overlay {
+  display: none;
+}
+
+.desktop-only {
+  display: flex;
+}
+
+/* Responsive — tablet */
+@media (max-width: 1024px) {
+  .left-panel {
+    width: 200px;
+  }
+
+  .right-panel {
+    width: 240px;
+  }
+}
+
+/* Responsive — mobile (Figma/Canva-style layout) */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 6px 12px;
+    height: 44px;
+  }
+
+  .app-logo {
+    font-size: 15px;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  /* Hide side panels entirely on mobile — replaced by bottom sheet */
+  .left-panel,
+  .right-panel {
+    display: none;
+  }
+
+  /* Canvas takes full remaining space */
+  .app-body {
+    position: relative;
+    flex: 1;
+  }
+
+  .canvas-area {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Compact header controls */
+  .export-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .undo-redo-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Bottom navigation bar */
+  .mobile-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    height: 56px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    padding: 4px 0;
+    padding-bottom: env(safe-area-inset-bottom, 4px);
+    z-index: 100;
+  }
+
+  .mobile-bar-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .mobile-bar-btn.active {
+    color: var(--accent);
+    background: rgba(230, 0, 35, 0.06);
+  }
+
+  .mobile-bar-btn:hover {
+    color: var(--text-primary);
+  }
+
+  /* Bottom sheet overlay */
+  .mobile-sheet-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.3);
+    align-items: flex-end;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .mobile-sheet {
+    width: 100%;
+    max-height: 60vh;
+    background: var(--bg-secondary);
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+    animation: slideUp 0.25s ease;
+  }
+
+  .mobile-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto 6px;
+  }
+
+  .mobile-sheet-content {
+    padding-bottom: 16px;
+  }
+
+  /* Zoom controls adjust for bottom bar */
+  .zoom-controls {
+    bottom: 68px;
+  }
+
+  .artboard-size-label {
+    bottom: 68px;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
