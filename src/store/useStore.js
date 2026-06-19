@@ -1,3 +1,4 @@
+// Central state — elements, selection, artboard, and undo/redo history
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 

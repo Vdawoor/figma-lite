@@ -1,8 +1,14 @@
 import { useRef, useEffect, useState } from 'react';
 import { Stage, Layer, Group, Rect, Transformer } from 'react-konva';
 import useStore from '../store/useStore';
+import useStageSize from '../hooks/useStageSize';
+import useArtboardDrawing from '../hooks/useArtboardDrawing';
+import useMarqueeSelection from '../hooks/useMarqueeSelection';
+import useTextEditing from '../hooks/useTextEditing';
+import Artboard from './Artboard';
 import { RectElement, CircleElement, TextElement, ImageElement } from './shapes';
 
+// Main canvas component — orchestrates stage, artboard, element rendering, and selection
 export default function Canvas({ stageRef }) {
   const elements = useStore((s) => s.elements);
   const selectedIds = useStore((s) => s.selectedIds);
@@ -10,34 +16,16 @@ export default function Canvas({ stageRef }) {
   const toggleSelection = useStore((s) => s.toggleSelection);
   const updateElementWithHistory = useStore((s) => s.updateElementWithHistory);
   const artboard = useStore((s) => s.artboard);
-  const setArtboard = useStore((s) => s.setArtboard);
+
+  const { stageSize, containerRef } = useStageSize();
+  const { isDrawingArtboard, drawingRect, startDrawing, updateDrawing, finishDrawing } = useArtboardDrawing();
+  const { isSelecting, selectionRect, startSelection, updateSelection, finishSelection } = useMarqueeSelection();
+  const { editingText, startEditing, updateText, finishEditing } = useTextEditing(stageRef);
 
   const transformerRef = useRef();
-  const artboardRef = useRef();
-  const artboardTrRef = useRef();
-  const containerRef = useRef();
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [selectionRect, setSelectionRect] = useState(null);
-  const [editingText, setEditingText] = useState(null);
-  const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
-  const [isDrawingArtboard, setIsDrawingArtboard] = useState(false);
-  const [artboardDraft, setArtboardDraft] = useState(null);
   const [artboardSelected, setArtboardSelected] = useState(false);
 
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        setStageSize({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        });
-      }
-    };
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-
+  // Sync transformer handles to whichever elements are currently selected
   useEffect(() => {
     if (!transformerRef.current || !stageRef.current) return;
     const stage = stageRef.current;
@@ -48,16 +36,7 @@ export default function Canvas({ stageRef }) {
     transformerRef.current.getLayer().batchDraw();
   }, [selectedIds, elements]);
 
-  useEffect(() => {
-    if (!artboardTrRef.current) return;
-    if (artboardSelected && artboardRef.current) {
-      artboardTrRef.current.nodes([artboardRef.current]);
-    } else {
-      artboardTrRef.current.nodes([]);
-    }
-    artboardTrRef.current.getLayer()?.batchDraw();
-  }, [artboardSelected, artboard]);
-
+  // If no artboard exists yet, mouse-down starts drawing one; otherwise starts marquee selection
   const handleStageMouseDown = (e) => {
     if (e.target !== e.target.getStage()) return;
     const pos = e.target.getStage().getPointerPosition();
@@ -65,80 +44,37 @@ export default function Canvas({ stageRef }) {
     setArtboardSelected(false);
 
     if (!artboard) {
-      setIsDrawingArtboard(true);
-      setArtboardDraft({ x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
+      startDrawing(pos);
       return;
     }
 
-    if (!e.evt.shiftKey) {
-      setSelectedIds([]);
-    }
-    setIsSelecting(true);
-    setSelectionRect({ x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
+    startSelection(pos, e.evt.shiftKey);
   };
 
+  // Routes mouse-move to artboard drawing or marquee selection depending on active mode
   const handleStageMouseMove = (e) => {
     const pos = e.target.getStage().getPointerPosition();
 
     if (isDrawingArtboard) {
-      setArtboardDraft((prev) => ({ ...prev, x2: pos.x, y2: pos.y }));
+      updateDrawing(pos);
       return;
     }
 
-    if (!isSelecting) return;
-    setSelectionRect((prev) => ({ ...prev, x2: pos.x, y2: pos.y }));
+    if (isSelecting) {
+      updateSelection(pos);
+    }
   };
 
+  // Commits the current interaction — finalizes artboard or resolves marquee to selected elements
   const handleStageMouseUp = () => {
-    if (isDrawingArtboard && artboardDraft) {
-      const { x1, y1, x2, y2 } = artboardDraft;
-      const width = Math.abs(x2 - x1);
-      const height = Math.abs(y2 - y1);
-
-      if (width >= 50 && height >= 50) {
-        setArtboard({
-          x: Math.min(x1, x2),
-          y: Math.min(y1, y2),
-          width,
-          height,
-        });
-      }
-      setIsDrawingArtboard(false);
-      setArtboardDraft(null);
+    if (isDrawingArtboard) {
+      finishDrawing();
       return;
     }
-
-    if (!isSelecting || !selectionRect) {
-      setIsSelecting(false);
-      return;
-    }
-    setIsSelecting(false);
-    const { x1, y1, x2, y2 } = selectionRect;
-    const box = {
-      x: Math.min(x1, x2),
-      y: Math.min(y1, y2),
-      width: Math.abs(x2 - x1),
-      height: Math.abs(y2 - y1),
-    };
-
-    if (box.width < 5 && box.height < 5) {
-      setSelectionRect(null);
-      return;
-    }
-
-    const selected = elements.filter((el) => {
-      const elBox = { x: el.x, y: el.y, width: el.width || 100, height: el.height || 50 };
-      return (
-        elBox.x < box.x + box.width &&
-        elBox.x + elBox.width > box.x &&
-        elBox.y < box.y + box.height &&
-        elBox.y + elBox.height > box.y
-      );
-    });
-    setSelectedIds(selected.map((el) => el.id));
-    setSelectionRect(null);
+    finishSelection();
   };
 
+  // Shift-click adds to selection; plain click replaces it
   const handleSelect = (e, element) => {
     setArtboardSelected(false);
     if (e.evt.shiftKey) {
@@ -148,43 +84,8 @@ export default function Canvas({ stageRef }) {
     }
   };
 
-  const handleTextDblClick = (element) => {
-    const stage = stageRef.current;
-    const textNode = stage.findOne('#' + element.id);
-    if (!textNode) return;
-
-    const textPosition = textNode.absolutePosition();
-    const stageContainer = stage.container();
-    const areaPosition = {
-      x: stageContainer.offsetLeft + textPosition.x,
-      y: stageContainer.offsetTop + textPosition.y,
-    };
-
-    setEditingText({
-      id: element.id,
-      x: areaPosition.x,
-      y: areaPosition.y,
-      text: element.text,
-      fontSize: element.fontSize || 24,
-      fontFamily: element.fontFamily || 'Arial',
-      width: element.width || 200,
-    });
-    setSelectedIds([]);
-  };
-
-  const handleTextEdit = (e) => {
-    setEditingText((prev) => ({ ...prev, text: e.target.value }));
-  };
-
-  const handleTextEditEnd = () => {
-    if (editingText) {
-      updateElementWithHistory(editingText.id, { text: editingText.text });
-      setEditingText(null);
-    }
-  };
-
+  // Maps element type to its shape component — add new shape types here
   const renderElement = (element) => {
-    console.log('Rendering element:', element);
     if (!element.visible) return null;
     const isSelected = selectedIds.includes(element.id);
 
@@ -217,7 +118,7 @@ export default function Canvas({ stageRef }) {
             isSelected={isSelected}
             onSelect={(e) => handleSelect(e, element)}
             onChange={(attrs) => updateElementWithHistory(element.id, attrs)}
-            onDblClick={() => handleTextDblClick(element)}
+            onDblClick={() => startEditing(element)}
           />
         );
       case 'image':
@@ -234,15 +135,6 @@ export default function Canvas({ stageRef }) {
         return null;
     }
   };
-
-  const drawingRect = artboardDraft
-    ? {
-        x: Math.min(artboardDraft.x1, artboardDraft.x2),
-        y: Math.min(artboardDraft.y1, artboardDraft.y2),
-        width: Math.abs(artboardDraft.x2 - artboardDraft.x1),
-        height: Math.abs(artboardDraft.y2 - artboardDraft.y1),
-      }
-    : null;
 
   return (
     <div
@@ -266,49 +158,13 @@ export default function Canvas({ stageRef }) {
         style={{ background: '#e8e8e8' }}
       >
         <Layer>
-          {artboard && (
-            <Rect
-              ref={artboardRef}
-              x={artboard.x}
-              y={artboard.y}
-              width={artboard.width}
-              height={artboard.height}
-              fill="#ffffff"
-              shadowColor="rgba(0,0,0,0.1)"
-              shadowBlur={12}
-              shadowOffsetX={0}
-              shadowOffsetY={2}
-              cornerRadius={2}
-              draggable
-              onClick={(e) => {
-                if (e.target === artboardRef.current) {
-                  setArtboardSelected(true);
-                  setSelectedIds([]);
-                }
-              }}
-              onDragEnd={(e) => {
-                setArtboard({
-                  ...artboard,
-                  x: e.target.x(),
-                  y: e.target.y(),
-                });
-              }}
-              onTransformEnd={() => {
-                const node = artboardRef.current;
-                const scaleX = node.scaleX();
-                const scaleY = node.scaleY();
-                node.scaleX(1);
-                node.scaleY(1);
-                setArtboard({
-                  x: node.x(),
-                  y: node.y(),
-                  width: Math.max(50, node.width() * scaleX),
-                  height: Math.max(50, node.height() * scaleY),
-                });
-              }}
-            />
-          )}
+          {/* Artboard (paper) with its own transformer */}
+          <Artboard
+            artboardSelected={artboardSelected}
+            setArtboardSelected={setArtboardSelected}
+          />
 
+          {/* Artboard draft preview while drawing */}
           {isDrawingArtboard && drawingRect && (
             <Rect
               x={drawingRect.x}
@@ -324,6 +180,7 @@ export default function Canvas({ stageRef }) {
             />
           )}
 
+          {/* Clipped group: unselected elements are hidden if outside the artboard boundary */}
           {artboard && (
             <Group
               clipX={artboard.x}
@@ -334,8 +191,10 @@ export default function Canvas({ stageRef }) {
               {elements.filter((el) => !selectedIds.includes(el.id)).map(renderElement)}
             </Group>
           )}
+          {/* Selected elements render outside the clip so they stay visible even if off-paper */}
           {artboard && elements.filter((el) => selectedIds.includes(el.id)).map(renderElement)}
 
+          {/* Marquee selection rectangle */}
           {isSelecting && selectionRect && (
             <Rect
               x={Math.min(selectionRect.x1, selectionRect.x2)}
@@ -349,6 +208,7 @@ export default function Canvas({ stageRef }) {
             />
           )}
 
+          {/* Transformer for resizing/rotating selected elements */}
           {artboard && (
             <Transformer
               ref={transformerRef}
@@ -364,27 +224,10 @@ export default function Canvas({ stageRef }) {
               }}
             />
           )}
-          <Transformer
-            ref={artboardTrRef}
-            rotateEnabled={false}
-            enabledAnchors={[
-              'top-left', 'top-center', 'top-right',
-              'middle-left', 'middle-right',
-              'bottom-left', 'bottom-center', 'bottom-right',
-            ]}
-            borderStroke="#000000"
-            borderStrokeWidth={1.5}
-            anchorStroke="#000000"
-            anchorFill="#fff"
-            anchorSize={8}
-            boundBoxFunc={(oldBox, newBox) => {
-              if (newBox.width < 50 || newBox.height < 50) return oldBox;
-              return newBox;
-            }}
-          />
         </Layer>
       </Stage>
 
+      {/* Inline text editor overlay */}
       {editingText && (
         <textarea
           className="text-editor"
@@ -398,10 +241,10 @@ export default function Canvas({ stageRef }) {
             minHeight: '30px',
           }}
           value={editingText.text}
-          onChange={handleTextEdit}
-          onBlur={handleTextEditEnd}
+          onChange={updateText}
+          onBlur={finishEditing}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') handleTextEditEnd();
+            if (e.key === 'Escape') finishEditing();
           }}
           autoFocus
         />
