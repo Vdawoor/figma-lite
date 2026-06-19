@@ -1,170 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
-import { Stage, Layer, Group, Rect, Circle, Text, Image, Transformer } from 'react-konva';
+import { Stage, Layer, Group, Rect, Transformer } from 'react-konva';
 import useStore from '../store/useStore';
-import useImage from '../hooks/useImage';
-
-
-function ImageElement({ element, onSelect, onChange }) {
-  const shapeRef = useRef();
-  const [image] = useImage(element.src);
-
-  return (
-    <Image
-      ref={shapeRef}
-      id={element.id}
-      image={image}
-      x={element.x}
-      y={element.y}
-      width={element.width}
-      height={element.height}
-      rotation={element.rotation || 0}
-      opacity={element.opacity ?? 1}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDragEnd={(e) => {
-        onChange({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-        node.scaleX(1);
-        node.scaleY(1);
-        onChange({
-          x: node.x(),
-          y: node.y(),
-          width: Math.max(5, node.width() * scaleX),
-          height: Math.max(5, node.height() * scaleY),
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
-
-function TextElement({ element, onSelect, onChange, onDblClick }) {
-  const shapeRef = useRef();
-
-  return (
-    <Text
-      ref={shapeRef}
-      id={element.id}
-      x={element.x}
-      y={element.y}
-      text={element.text}
-      fontSize={element.fontSize || 24}
-      fontFamily={element.fontFamily || 'Arial'}
-      fill={element.fill}
-      width={element.width}
-      rotation={element.rotation || 0}
-      opacity={element.opacity ?? 1}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDblClick={onDblClick}
-      onDblTap={onDblClick}
-      onDragEnd={(e) => {
-        onChange({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        const scaleX = node.scaleX();
-        node.scaleX(1);
-        node.scaleY(1);
-        onChange({
-          x: node.x(),
-          y: node.y(),
-          width: Math.max(5, node.width() * scaleX),
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
-
-function RectElement({ element, onSelect, onChange }) {
-  const shapeRef = useRef();
-
-  return (
-    <Rect
-      ref={shapeRef}
-      id={element.id}
-      x={element.x}
-      y={element.y}
-      width={element.width}
-      height={element.height}
-      fill={element.fill}
-      stroke={element.stroke}
-      strokeWidth={element.strokeWidth || 0}
-      rotation={element.rotation || 0}
-      opacity={element.opacity ?? 1}
-      cornerRadius={element.cornerRadius || 0}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDragEnd={(e) => {
-        onChange({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-        node.scaleX(1);
-        node.scaleY(1);
-        onChange({
-          x: node.x(),
-          y: node.y(),
-          width: Math.max(5, node.width() * scaleX),
-          height: Math.max(5, node.height() * scaleY),
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
-
-function CircleElement({ element, onSelect, onChange }) {
-  const shapeRef = useRef();
-  const radiusX = element.width / 2;
-  const radiusY = element.height / 2;
-
-  return (
-    <Circle
-      ref={shapeRef}
-      id={element.id}
-      x={element.x}
-      y={element.y}
-      radiusX={radiusX}
-      radiusY={radiusY}
-      fill={element.fill}
-      stroke={element.stroke}
-      strokeWidth={element.strokeWidth || 0}
-      rotation={element.rotation || 0}
-      opacity={element.opacity ?? 1}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDragEnd={(e) => {
-        onChange({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-        node.scaleX(1);
-        node.scaleY(1);
-        onChange({
-          x: node.x(),
-          y: node.y(),
-          width: Math.max(5, node.width() * scaleX),
-          height: Math.max(5, node.height() * scaleY),
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
+import { RectElement, CircleElement, TextElement, ImageElement } from './shapes';
 
 export default function Canvas({ stageRef }) {
   const elements = useStore((s) => s.elements);
@@ -347,6 +184,7 @@ export default function Canvas({ stageRef }) {
   };
 
   const renderElement = (element) => {
+    console.log('Rendering element:', element);
     if (!element.visible) return null;
     const isSelected = selectedIds.includes(element.id);
 
@@ -478,7 +316,7 @@ export default function Canvas({ stageRef }) {
               width={drawingRect.width}
               height={drawingRect.height}
               fill="#ffffff"
-              stroke="#e60023"
+              stroke="#000000"
               strokeWidth={2}
               dash={[6, 4]}
               opacity={0.8}
@@ -505,7 +343,7 @@ export default function Canvas({ stageRef }) {
               width={Math.abs(selectionRect.x2 - selectionRect.x1)}
               height={Math.abs(selectionRect.y2 - selectionRect.y1)}
               fill="rgba(230, 0, 35, 0.05)"
-              stroke="#e60023"
+              stroke="#000000"
               strokeWidth={1}
               dash={[4, 4]}
             />
@@ -534,9 +372,9 @@ export default function Canvas({ stageRef }) {
               'middle-left', 'middle-right',
               'bottom-left', 'bottom-center', 'bottom-right',
             ]}
-            borderStroke="#e60023"
+            borderStroke="#000000"
             borderStrokeWidth={1.5}
-            anchorStroke="#e60023"
+            anchorStroke="#000000"
             anchorFill="#fff"
             anchorSize={8}
             boundBoxFunc={(oldBox, newBox) => {
